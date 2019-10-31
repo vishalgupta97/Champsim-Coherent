@@ -196,9 +196,9 @@ class CACHE : public MEMORY {
          prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata),
          kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata);
 
-    void handle_fill(),
-         handle_writeback(),
-         handle_read(),
+    void handle_fill(),l1_handle_fill(),l2_handle_fill(),llc_handle_fill(),
+         handle_writeback(),l1_handle_writeback(),l2_handle_writeback(),llc_handle_writeback(),
+         handle_read(),l1_handle_read(),l2_handle_read(),llc_handle_read(),
          handle_prefetch();
 
     void add_mshr(PACKET *packet),
