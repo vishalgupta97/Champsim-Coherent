@@ -5,13 +5,19 @@
 #include "instruction.h"
 #include "set.h"
 
+
 // CACHE BLOCK
 class BLOCK {
   public:
-    uint8_t valid,
+    /*uint8_t valid,
             prefetch,
             dirty,
-            used;
+            used;*/
+
+    //@Vishal : Coherent State
+    uint8_t state; // No need for valid and dirty bit
+
+    uint8_t prefetch,used;
 
     int delta,
         depth,
@@ -29,10 +35,13 @@ class BLOCK {
     uint32_t lru;
 
     BLOCK() {
-        valid = 0;
+        //valid = 0;
         prefetch = 0;
-        dirty = 0;
+        //dirty = 0;
         used = 0;
+
+        //@Vishal
+        state = I_STATE;
 
         delta = 0;
         depth = 0;
@@ -80,6 +89,11 @@ class PACKET {
         depth,
         signature,
         confidence;
+
+
+    //@Vishal
+    uint8_t message_type;
+    uint8_t state;
 
     uint32_t pf_metadata;
 
@@ -134,6 +148,9 @@ class PACKET {
         signature = 0;
         confidence = 0;
 
+	//@Vishal
+	message_type = 0;
+	state = I_STATE;
 #if 0
         for (uint32_t i=0; i<ROB_SIZE; i++) {
             rob_index_depend_on_me[i] = 0;

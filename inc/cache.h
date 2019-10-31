@@ -69,6 +69,10 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 #define L2C_MSHR_SIZE 32
 #define L2C_LATENCY 10  // 5 (L1I or L1D) + 10 = 15 cycles
 
+#define L2C_RESQ_SIZE 32
+#define L2C_FWQ_SIZE 32
+
+
 // LAST LEVEL CACHE
 #define LLC_SET NUM_CPUS*2048
 #define LLC_WAY 16
@@ -77,6 +81,9 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 #define LLC_PQ_SIZE NUM_CPUS*32
 #define LLC_MSHR_SIZE NUM_CPUS*64
 #define LLC_LATENCY 20  // 5 (L1I or L1D) + 10 + 20 = 35 cycles
+
+#define LLC_REQQ_SIZE NUM_CPUS * 64
+#define LLC_RESQ_SIZE NUM_CPUS * 64
 
 class CACHE : public MEMORY {
   public:
@@ -103,6 +110,12 @@ class CACHE : public MEMORY {
                  PQ{NAME + "_PQ", PQ_SIZE}, // prefetch queue
                  MSHR{NAME + "_MSHR", MSHR_SIZE}, // MSHR
                  PROCESSED{NAME + "_PROCESSED", ROB_SIZE}; // processed queue
+   
+    //@Vishal: Forward and Response Queue per processor 
+    //Fix this : Size should depend on cache_type
+    PACKET_QUEUE REQQ{NAME + "_REQQ", LLC_REQQ_SIZE}, //Handles GetS, GetM, PutS, PutM messages
+	    	 RESQ{NAME + "_RESQ", LLC_RESQ_SIZE}, //Handles Data and Inv-Ack messages
+                 FWQ{NAME + "_FWQ", L2C_FWQ_SIZE}; //Handles Fwd-GetS, Fwd-GetM, Inv and Put-Ack messages
 
     uint64_t sim_access[NUM_CPUS][NUM_TYPES],
              sim_hit[NUM_CPUS][NUM_TYPES],

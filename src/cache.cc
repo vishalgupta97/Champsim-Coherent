@@ -21,6 +21,50 @@ void CACHE::handle_fill()
 
         // find victim
         uint32_t set = get_set(MSHR.entry[mshr_index].address), way;
+
+	//Coherence
+	/*if(cache_type == IS_L1D || cache_type == IS_L1I)
+	{
+		way = check_hit(&MSHR.entry[mshr_index]);
+
+		if(way != -1)
+		{
+			//L1R4C3
+			assert(block[set][way].state != M_STATE);
+		
+			//L1R3C3
+			block[set][way].state = M_STATE; // If block is present in L1 then only upgrade miss can happen.
+				
+			  // COLLECT STATS
+			    sim_miss[fill_cpu][MSHR.entry[mshr_index].type]++;
+			    sim_access[fill_cpu][MSHR.entry[mshr_index].type]++;
+
+			    // check fill level
+			    if (MSHR.entry[mshr_index].fill_level < fill_level) {
+
+				if (MSHR.entry[mshr_index].instruction)
+				    upper_level_icache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+				else // data
+				    upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+			    }
+
+			    if(warmup_complete[fill_cpu])
+			      {
+				uint64_t current_miss_latency = (current_core_cycle[fill_cpu] - MSHR.entry[mshr_index].cycle_enqueued);
+				total_miss_latency += current_miss_latency;
+			      }
+
+			    MSHR.remove_queue(&MSHR.entry[mshr_index]);
+			    MSHR.num_returned--;
+
+			    update_fill_cycle();
+
+			    return; // return here, as miss request is serviced.
+
+
+		}
+	}*/
+
         if (cache_type == IS_LLC) {
             way = llc_find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set], MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
         }
@@ -69,7 +113,7 @@ void CACHE::handle_fill()
         uint8_t  do_fill = 1;
 
         // is this dirty?
-        if (block[set][way].dirty) {
+        if (block[set][way].state == M_STATE) {
 
             // check if the lower level WQ has enough room to keep this writeback request
             if (lower_level) {
@@ -138,12 +182,20 @@ void CACHE::handle_fill()
             sim_access[fill_cpu][MSHR.entry[mshr_index].type]++;
 
             fill_cache(set, way, &MSHR.entry[mshr_index]);
+	
+    	    //Coherence: L1R1C3 	    
+	    /*if(cache_type == IS_L1D)
+	    {
+		    block[set][way].state = MSHR.entry[mshr_index].state;
+	    }*/
 
             // RFO marks cache line dirty
             if (cache_type == IS_L1D) {
                 if (MSHR.entry[mshr_index].type == RFO)
-                    block[set][way].dirty = 1;
+                    block[set][way].state = M_STATE;
             }
+
+	    
 
             // check fill level
             if (MSHR.entry[mshr_index].fill_level < fill_level) {
@@ -191,10 +243,13 @@ void CACHE::handle_fill()
 
 void CACHE::handle_writeback()
 {
+
     // handle write
     uint32_t writeback_cpu = WQ.entry[WQ.head].cpu;
     if (writeback_cpu == NUM_CPUS)
         return;
+
+    assert(cache_type != IS_L1I); //Write request can't come to L1I
 
     // handle the oldest entry
     if ((WQ.entry[WQ.head].event_cycle <= current_core_cycle[writeback_cpu]) && (WQ.occupancy > 0)) {
@@ -203,7 +258,14 @@ void CACHE::handle_writeback()
         // access cache
         uint32_t set = get_set(WQ.entry[index].address);
         int way = check_hit(&WQ.entry[index]);
-        
+
+        //Coherence: L1R3C2
+	/*if(cache_type == IS_L1D && way >= 0 && block[set][way].state == S_STATE) //Coherence Write miss
+        {
+        	way = -1;
+        }*/
+       
+
         if (way >= 0) { // writeback hit (or RFO hit for L1D)
 
             if (cache_type == IS_LLC) {
@@ -218,7 +280,9 @@ void CACHE::handle_writeback()
             sim_access[writeback_cpu][WQ.entry[index].type]++;
 
             // mark dirty
-            block[set][way].dirty = 1;
+            //block[set][way].dirty = 1;
+	      block[set][way].state = M_STATE; 
+
 
             if (cache_type == IS_ITLB)
                 WQ.entry[index].instruction_pa = block[set][way].data;
@@ -257,32 +321,19 @@ void CACHE::handle_writeback()
                 int mshr_index = check_mshr(&WQ.entry[index]);
 
                 if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
-
-		  if(cache_type == IS_LLC)
-		    {
-		      // check to make sure the DRAM RQ has room for this LLC RFO miss
-		      if (lower_level->get_occupancy(1, WQ.entry[index].address) == lower_level->get_size(1, WQ.entry[index].address))
-			{
-			  miss_handled = 0;
-			}
-		      else
-			{
-			  add_mshr(&WQ.entry[index]);
-			  lower_level->add_rq(&WQ.entry[index]);
-			}
-		    }
-		  else
-		    {
-		      // add it to mshr (RFO miss)
-		      add_mshr(&WQ.entry[index]);
-		      
-		      // add it to the next level's read queue
-		      //if (lower_level) // L1D always has a lower level cache
-		      lower_level->add_rq(&WQ.entry[index]);
-		    }
+		  
+				      // add it to mshr (RFO miss)
+				      add_mshr(&WQ.entry[index]);
+				      
+				      // add it to the next level's read queue
+				      //if (lower_level) // L1D always has a lower level cache
+				      lower_level->add_rq(&WQ.entry[index]);
                 }
                 else {
-                    if ((mshr_index == -1) && (MSHR.occupancy == MSHR_SIZE)) { // not enough MSHR resource
+
+                	//Coherence: Write request MSHR hit stall.
+
+                   if ((mshr_index == -1) && (MSHR.occupancy == MSHR_SIZE)) { // not enough MSHR resource
                         
                         // cannot handle miss request until one of MSHRs is available
                         miss_handled = 0;
@@ -349,7 +400,7 @@ void CACHE::handle_writeback()
                 uint8_t  do_fill = 1;
 
                 // is this dirty?
-                if (block[set][way].dirty) {
+                if (block[set][way].state == M_STATE) {
 
                     // check if the lower level WQ has enough room to keep this writeback request
                     if (lower_level) { 
@@ -419,7 +470,8 @@ void CACHE::handle_writeback()
                     fill_cache(set, way, &WQ.entry[index]);
 
                     // mark dirty
-                    block[set][way].dirty = 1; 
+                    //block[set][way].dirty = 1; 
+		      block[set][way].state = M_STATE;
 
                     // check fill level
                     if (WQ.entry[index].fill_level < fill_level) {
@@ -920,7 +972,7 @@ uint32_t CACHE::get_set(uint64_t address)
 uint32_t CACHE::get_way(uint64_t address, uint32_t set)
 {
     for (uint32_t way=0; way<NUM_WAY; way++) {
-        if (block[set][way].valid && (block[set][way].tag == address)) 
+        if (block[set][way].state != I_STATE && (block[set][way].tag == address)) 
             return way;
     }
 
@@ -948,9 +1000,11 @@ void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)
     if (block[set][way].prefetch && (block[set][way].used == 0))
         pf_useless++;
 
-    if (block[set][way].valid == 0)
-        block[set][way].valid = 1;
-    block[set][way].dirty = 0;
+    //if (block[set][way].valid == 0)
+    //    block[set][way].valid = 1;
+    //block[set][way].dirty = 0;
+      block[set][way].state = S_STATE;
+
     block[set][way].prefetch = (packet->type == PREFETCH) ? 1 : 0;
     block[set][way].used = 0;
 
@@ -989,7 +1043,7 @@ int CACHE::check_hit(PACKET *packet)
 
     // hit
     for (uint32_t way=0; way<NUM_WAY; way++) {
-        if (block[set][way].valid && (block[set][way].tag == packet->address)) {
+        if (block[set][way].state != I_STATE && (block[set][way].tag == packet->address)) {
 
             match_way = way;
 
@@ -1019,9 +1073,9 @@ int CACHE::invalidate_entry(uint64_t inval_addr)
 
     // invalidate
     for (uint32_t way=0; way<NUM_WAY; way++) {
-        if (block[set][way].valid && (block[set][way].tag == inval_addr)) {
+        if (block[set][way].state != I_STATE && (block[set][way].tag == inval_addr)) {
 
-            block[set][way].valid = 0;
+            block[set][way].state = I_STATE;
 
             match_way = way;
 

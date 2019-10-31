@@ -22,7 +22,7 @@ uint32_t CACHE::lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const 
 
     // fill invalid line first
     for (way=0; way<NUM_WAY; way++) {
-        if (block[set][way].valid == false) {
+        if (block[set][way].state == I_STATE) {
 
             DP ( if (warmup_complete[cpu]) {
             cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " invalid set: " << set << " way: " << way;
