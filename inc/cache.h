@@ -114,7 +114,7 @@ class CACHE : public MEMORY {
     //@Vishal: Forward and Response Queue per processor 
     //Fix this : Size should depend on cache_type
     PACKET_QUEUE REQQ{NAME + "_REQQ", LLC_REQQ_SIZE}, //Handles GetS, GetM, PutS, PutM messages
-	    	 RESQ{NAME + "_RESQ", LLC_RESQ_SIZE}, //Handles Data and Inv-Ack messages
+	    	     RESQ{NAME + "_RESQ", LLC_RESQ_SIZE}, //Handles Data and Inv-Ack messages
                  FWQ{NAME + "_FWQ", L2C_FWQ_SIZE}; //Handles Fwd-GetS, Fwd-GetM, Inv and Put-Ack messages
 
     uint64_t sim_access[NUM_CPUS][NUM_TYPES],
@@ -196,10 +196,20 @@ class CACHE : public MEMORY {
          prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata),
          kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata);
 
-    void handle_fill(),l1_handle_fill(),l2_handle_fill(),llc_handle_fill(),
-         handle_writeback(),l1_handle_writeback(),l2_handle_writeback(),llc_handle_writeback(),
-         handle_read(),l1_handle_read(),l2_handle_read(),llc_handle_read(),
-         handle_prefetch();
+    void handle_fill(),
+         handle_writeback(),
+         handle_read(),
+	 handle_prefetch(),
+	 l1_handle_fill(),
+	 l1_handle_writeback(),
+	 l1_handle_read(),
+	 l2_handle_response(),
+	 l2_handle_forwards(),
+	 l2_handle_writeback(),
+	 l2_handle_read(),
+	 llc_handle_response(),
+	 llc_handle_request(),
+	 llc_handle_fill;
 
     void add_mshr(PACKET *packet),
          update_fill_cycle(),

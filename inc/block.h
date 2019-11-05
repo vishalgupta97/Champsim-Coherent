@@ -94,6 +94,7 @@ class PACKET {
     //@Vishal
     uint8_t message_type;
     uint8_t state;
+    uint32_t requester_cpu;
 
     uint32_t pf_metadata;
 
@@ -151,6 +152,7 @@ class PACKET {
 	//@Vishal
 	message_type = 0;
 	state = I_STATE;
+    requester_cpu = -1;
 #if 0
         for (uint32_t i=0; i<ROB_SIZE; i++) {
             rob_index_depend_on_me[i] = 0;
