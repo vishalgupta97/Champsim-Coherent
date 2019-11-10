@@ -14,6 +14,8 @@
 #define NUM_INSTR_DESTINATIONS 2
 #define NUM_INSTR_SOURCES 4
 
+map <unsigned long long, &pinlock> addr_lock;
+
 typedef struct trace_instr_format {
     unsigned long long int ip;  // instruction pointer (program counter) value
 
@@ -25,6 +27,8 @@ typedef struct trace_instr_format {
 
     unsigned long long int destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
     unsigned long long int source_memory[NUM_INSTR_SOURCES];           // input memory
+
+	unsigned long long int time_fill; // counter to update the address
 } trace_instr_format_t;
 
 /* ================================================================== */
