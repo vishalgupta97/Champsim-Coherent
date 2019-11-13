@@ -71,6 +71,7 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 
 #define L2C_RESQ_SIZE 32
 #define L2C_FWQ_SIZE 32
+#define L2C_FAB_SIZE 64
 
 
 // LAST LEVEL CACHE
@@ -81,6 +82,10 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 #define LLC_PQ_SIZE NUM_CPUS*32
 #define LLC_MSHR_SIZE NUM_CPUS*64
 #define LLC_LATENCY 20  // 5 (L1I or L1D) + 10 + 20 = 35 cycles
+
+//@Vishal
+#define DIR_NUM_SET LLC_SET
+#define DIR_NUM_WAY NUM_CPUS*L2C_WAY
 
 #define LLC_REQQ_SIZE NUM_CPUS * 64
 #define LLC_RESQ_SIZE NUM_CPUS * 64
@@ -115,7 +120,8 @@ class CACHE : public MEMORY {
     //Fix this : Size should depend on cache_type
     PACKET_QUEUE REQQ{NAME + "_REQQ", LLC_REQQ_SIZE}, //Handles GetS, GetM, PutS, PutM messages
 	    	     RESQ{NAME + "_RESQ", LLC_RESQ_SIZE}, //Handles Data and Inv-Ack messages
-                 FWQ{NAME + "_FWQ", L2C_FWQ_SIZE}; //Handles Fwd-GetS, Fwd-GetM, Inv and Put-Ack messages
+                 FWQ{NAME + "_FWQ", L2C_FWQ_SIZE}, //Handles Fwd-GetS, Fwd-GetM, Inv and Put-Ack messages
+                 FAB{NAME + "_FAB", L2C_FAB_SIZE}; //Handles entries which are replaced but are waiting for ack from directory (Replacement hint is implemented)
 
     DIR_ENTRY **directory;
 
@@ -221,7 +227,13 @@ class CACHE : public MEMORY {
     	 llc_handle_response(),
     	 llc_handle_request();
 
-    int l2_handle_fill();
+    bool make_inclusive(CACHE &cache,uint64_t address);
+    bool back_invalidate_l1(uint64_t address);
+    int l2_handle_fill(uint32_t mshr_index);
+    int dir_check_hit(PACKET *packet);
+
+    void add_fab(PACKET *packet);
+    int check_fab(PACKET *packet);
 
     void add_mshr(PACKET *packet),
          update_fill_cycle(),

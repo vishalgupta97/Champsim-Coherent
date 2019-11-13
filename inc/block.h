@@ -22,7 +22,7 @@ class DIR_ENTRY {
              cpu,
              instr_id;
 
-    BLOCK() {
+    DIR_ENTRY() {
 
         //@Vishal
         state = I_STATE;

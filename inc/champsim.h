@@ -19,6 +19,11 @@
 #include <string>
 #include <iomanip>
 
+//@Vishal
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
+
+
+
 // USEFUL MACROS
 //#define DEBUG_PRINT
 #define SANITY_CHECK

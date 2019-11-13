@@ -1,6 +1,6 @@
-policy=${1}
-numcpu=${2}
-combination=${3}
+policy=lru #${1}
+numcpu=1  #${2}
+combination=no-no-no #${3}
 
 IFS='-' # hyphen (-) is set as delimiter
 read -ra ADDR <<< "${combination}" # string is read into an array as tokens separated by IFS
