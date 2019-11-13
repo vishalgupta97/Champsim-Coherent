@@ -10,11 +10,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
+#include <map>
 
+//using namespace std;
 #define NUM_INSTR_DESTINATIONS 2
 #define NUM_INSTR_SOURCES 4
 
-map <unsigned long long, &pinlock> addr_lock;
+map <unsigned long long int, PIN_LOCK> addr_lock;
+map <unsigned long long int, unsigned long long int> addr_counter;
 
 typedef struct trace_instr_format {
     unsigned long long int ip;  // instruction pointer (program counter) value
@@ -404,11 +407,36 @@ int main(int argc, char *argv[])
 
     const char* fileName = KnobOutputFile.Value().c_str();
 
+	FILE *unique_addr;
+	
+
     out = fopen(fileName, "ab");
     if (!out) 
     {
         cout << "Couldn't open output trace file. Exiting." << endl;
         exit(1);
+    }
+
+	unique_addr = fopen("unique_address.out", "r");
+    if (!unique_addr)
+    {
+        cout << "Couldn't open unique block file. Exiting." << endl;
+        exit(1);
+    }
+
+	//map <unsigned long long, PIN_LOCK> addr_lock; This map is declared globally
+	
+	char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+	unsigned long long int address;
+	PIN_LOCK pinLock;    
+	PIN_InitLock(&pinLock);
+    while ((read = getline(&line, &len, unique_addr)) != -1) //Reading addresses and storing in map addr_lock and addr_counter
+	{
+		address= strtoull (line,NULL,10);
+		addr_lock.insert({address,pinLock});  //Created map of address and lock
+		addr_counter.insert({address,0});     //Created map of address and counter
     }
 
     // Register function to be called to instrument instructions
