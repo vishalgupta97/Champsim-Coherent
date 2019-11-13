@@ -6,6 +6,37 @@
 #include "set.h"
 
 
+class DIR_ENTRY {
+  public:
+
+    //@Vishal : Coherent State
+    uint8_t state; // No need for valid and dirty bit
+
+    bool sharers[NUM_CPUS];
+    int sharers_cnt;
+
+    uint64_t address,
+             full_addr,
+             tag,
+             data,
+             cpu,
+             instr_id;
+
+    BLOCK() {
+
+        //@Vishal
+        state = I_STATE;
+
+        address = 0;
+        full_addr = 0;
+        tag = 0;
+        data = 0;
+        cpu = 0;
+        instr_id = 0;
+        sharers_cnt = 0;
+    };
+};
+
 // CACHE BLOCK
 class BLOCK {
   public:
@@ -95,6 +126,7 @@ class PACKET {
     uint8_t message_type;
     uint8_t state;
     uint32_t requester_cpu;
+    uint32_t acks;
 
     uint32_t pf_metadata;
 
@@ -153,6 +185,7 @@ class PACKET {
 	message_type = 0;
 	state = I_STATE;
     requester_cpu = -1;
+    acks = 0;
 #if 0
         for (uint32_t i=0; i<ROB_SIZE; i++) {
             rob_index_depend_on_me[i] = 0;

@@ -117,6 +117,8 @@ class CACHE : public MEMORY {
 	    	     RESQ{NAME + "_RESQ", LLC_RESQ_SIZE}, //Handles Data and Inv-Ack messages
                  FWQ{NAME + "_FWQ", L2C_FWQ_SIZE}; //Handles Fwd-GetS, Fwd-GetM, Inv and Put-Ack messages
 
+    DIR_ENTRY **directory;
+
     uint64_t sim_access[NUM_CPUS][NUM_TYPES],
              sim_hit[NUM_CPUS][NUM_TYPES],
              sim_miss[NUM_CPUS][NUM_TYPES],
@@ -141,6 +143,13 @@ class CACHE : public MEMORY {
                 block[i][j].lru = j;
             }
         }
+
+        //Directory Intialization: Todo: Should only be for LLC
+        directory = new DIR_ENTRY* [DIR_NUM_SET];
+        for (uint32_t i=0; i<DIR_NUM_SET; i++) {
+            directory[i] = new DIR_ENTRY[DIR_NUM_WAY]; 
+        }
+
 
         for (uint32_t i=0; i<NUM_CPUS; i++) {
             upper_level_icache[i] = NULL;
@@ -196,20 +205,23 @@ class CACHE : public MEMORY {
          prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, uint32_t prefetch_metadata),
          kpc_prefetch_line(uint64_t base_addr, uint64_t pf_addr, int prefetch_fill_level, int delta, int depth, int signature, int confidence, uint32_t prefetch_metadata);
 
+
+    //@Vishal: Added functions for coherence
     void handle_fill(),
          handle_writeback(),
          handle_read(),
-	 handle_prefetch(),
-	 l1_handle_fill(),
-	 l1_handle_writeback(),
-	 l1_handle_read(),
-	 l2_handle_response(),
-	 l2_handle_forwards(),
-	 l2_handle_writeback(),
-	 l2_handle_read(),
-	 llc_handle_response(),
-	 llc_handle_request(),
-	 llc_handle_fill;
+    	 handle_prefetch(),
+    	 l1_handle_fill(),
+    	 l1_handle_writeback(),
+    	 l1_handle_read(),
+    	 l2_handle_response(),
+    	 l2_handle_forwards(),
+    	 l2_handle_writeback(),
+    	 l2_handle_read(),
+    	 llc_handle_response(),
+    	 llc_handle_request();
+
+    int l2_handle_fill();
 
     void add_mshr(PACKET *packet),
          update_fill_cycle(),
