@@ -54,8 +54,8 @@ set<unsigned long long> unique_addr;
 VOID RecordMachineAccess(VOID * addr, UINT32 size, THREADID tid)
 {
 	PIN_GetLock(&pinLock, tid+1);
-    unsigned long a = (unsigned long )(addr);
-    unsigned long curr_a = a;
+    unsigned long long a = (unsigned long long)(addr);
+    unsigned long long curr_a = a;
     //fprintf(trace,"Address: %ld Size: %d Thread id: %d\n",a,size,tid);
 	curr_a = a >> 6;
 	//printf("%ld %d\n",curr_a,size);

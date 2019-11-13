@@ -64,6 +64,11 @@ int main(int argc, char* argv[])
     int        a         = 1;  /* thread 1 identifying number            */
     int        b         = 2;  /* thread 2 identifying number            */
 	int c =3,d=4;
+
+	pthread_mutex_lock(&b_mutex);
+	pthread_mutex_lock(&c_mutex);
+	pthread_mutex_lock(&d_mutex);
+
     /* create a new thread that will execute 'do_loop()' */
     pthread_create(&p_thread1, NULL, do_loop, (void*)&a);
 	pthread_create(&p_thread2, NULL, do_loop, (void*)&b);
