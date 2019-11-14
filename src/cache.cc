@@ -760,8 +760,7 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
     //MSHR hit then stall //L2R(2,3,4,6,7)C4
     for (uint32_t index=0; index<MSHR_SIZE; index++) {
         if ( MSHR.entry[index].address != 0 && MSHR.entry[index].address == block[set][way].address) {
-    	   //assert(0); //Remove this      
-            return -1;
+    	   assert(MSHR.entry[index].state == SMAD_STATE ||MSHR.entry[index].state == SMA_STATE);
         }
     }
 
@@ -791,15 +790,20 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
 				
 	        	if(back_invalidate_l1(block[set][way].address))
 	    		{
-					if(WQ.check_queue(&MSHR.entry[mshr_index]) != -1 && block[set][way].state == M_STATE)
+				if(block[set][way].state == M_STATE)
+				{
+					for(int i = 0; i < WQ.SIZE;i++)
 					{
-						do_fill = 0;
-    		            lower_level->increment_WQ_FULL(block[set][way].address);
-	        	        STALL[MSHR.entry[mshr_index].type]++;
-           				 //assert(0);//Remove this
-                		return -1;
-
+						if(WQ.entry[i].address == block[set][way].address)
+						{
+							do_fill = 0;
+							lower_level->increment_WQ_FULL(block[set][way].address);
+							STALL[MSHR.entry[mshr_index].type]++;
+							 //assert(0);//Remove this
+							return -1;
+						}	
 					}
+				}
 
 	    			PACKET put_packet;
 
@@ -816,9 +820,11 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
 		            	put_packet.message_type = PUTS_MSG;
 		            put_packet.event_cycle = current_core_cycle[fill_cpu];
 
-                    assert(put_packet.message_type!=5);
+                    	    assert(put_packet.message_type!=5);
 		            uncore.LLC.REQQ.add_queue(&put_packet);
-		            if(block[set][way].state == M_STATE)
+		            
+			    
+			    if(block[set][way].state == M_STATE)
 		            	put_packet.state = MIA_STATE;
 		            else if(block[set][way].state == S_STATE)
 		            	put_packet.state = SIA_STATE;
@@ -960,7 +966,23 @@ void CACHE::l2_handle_response()
         		if(MSHR.entry[mshr_index].state == IMAD_STATE)
         			MSHR.entry[mshr_index].state = IMA_STATE;
         		else if(MSHR.entry[mshr_index].state == SMAD_STATE)
-        			MSHR.entry[mshr_index].state = SMA_STATE;
+			{
+
+				if(way == -1)
+				{
+					int fill_way = l2_handle_fill(mshr_index); //L2R(2,3)C(9,11)
+					if(fill_way == -1)
+					{
+						response_handled = 0;
+						//assert(0);//@Vishal: Remove this
+					}
+				}
+
+				if(response_handled)
+				{
+					MSHR.entry[mshr_index].state = SMA_STATE;
+				}
+			}
         		else
         			assert(0);
         	}
@@ -1338,16 +1360,20 @@ void CACHE::llc_handle_request()
         	else if(REQQ.entry[index].message_type == GETM_MSG) //LLCR2C2
         	{
         		//Add LLC Hit latency and just send the data 
-	            REQQ.entry[index].message_type = DATA_MSG;
+	            	REQQ.entry[index].message_type = DATA_MSG;
     			ooo_cpu[REQQ.entry[index].cpu].L2C.RESQ.add_queue(&REQQ.entry[index]);
 
+			int inv_cnt = 0;
     			for(int i = 0; i < NUM_CPUS; i++)
     				if( i!= REQQ.entry[index].cpu && directory[set][dir_way].sharers[i])
     				{
     					REQQ.entry[index].message_type = INV_MSG;
     					ooo_cpu[i].L2C.FWQ.add_queue(&REQQ.entry[index]);
     					directory[set][dir_way].sharers[i] = false;
+					inv_cnt++;
     				}
+
+			REQQ.entry[index].acks = inv_cnt;
 
     			directory[set][dir_way].sharers[REQQ.entry[index].cpu] = true;
     			directory[set][dir_way].state = M_STATE;
