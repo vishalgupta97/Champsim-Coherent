@@ -237,6 +237,8 @@ void CACHE::l1_handle_writeback()
 	if(cache_type == IS_L1D && way >= 0 && block[set][way].state == S_STATE) //Coherence Write miss
     	{
     		way = -1;
+		//block[set][way].state = I_STATE;
+		invalidate_entry(block[set][way].address);
     	}
        
 
@@ -774,7 +776,7 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
 
     // is this dirty?
     
-    if(block[set][way].address != 0)
+    if(block[set][way].address != 0 && block[set][way].address != MSHR.entry[mshr_index].address)
     {
 	    if (lower_level) {
 	        if (lower_level->get_occupancy(4, block[set][way].address) == lower_level->get_size(4, block[set][way].address)) {
