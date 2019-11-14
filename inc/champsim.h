@@ -37,7 +37,7 @@
 #define DP(x)
 #endif
 
-#define PRINT_QUEUE_TRACE
+//#define PRINT_QUEUE_TRACE
 
 // CPU
 #define NUM_CPUS 1

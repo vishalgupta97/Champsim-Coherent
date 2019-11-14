@@ -124,8 +124,8 @@ class PACKET {
 
 
     //@Vishal
-    uint8_t message_type;
-    uint8_t state;
+    int message_type;
+    int state;
     uint32_t requester_cpu;
     uint32_t acks;
 

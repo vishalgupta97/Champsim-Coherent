@@ -89,7 +89,7 @@ void PACKET_QUEUE::add_queue(PACKET *packet)
 #ifdef PRINT_QUEUE_TRACE
     cout << "[" << NAME << "] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << packet->instr_id;
     cout << " address: " << hex << entry[tail].address << " full_addr: " << entry[tail].full_addr << dec;
-    cout << " head: " << head << " tail: " << tail << " occupancy: " << occupancy << " event_cycle: " << entry[tail].event_cycle << endl; //});
+    cout << " head: " << head << " tail: " << tail << " occupancy: " << occupancy << " event_cycle: " << entry[tail].event_cycle << " message_type: "<< dec << packet->message_type <<endl; //});
 #endif
     occupancy++;
     tail++;
@@ -113,7 +113,7 @@ void PACKET_QUEUE::remove_queue(PACKET *packet)
 #ifdef PRINT_QUEUE_TRACE
     cout << "[" << NAME << "] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << packet->instr_id;
     cout << " address: " << hex << packet->address << " full_addr: " << packet->full_addr << dec << " fill_level: " << packet->fill_level;
-    cout << " head: " << head << " tail: " << tail << " occupancy: " << occupancy << " event_cycle: " << packet->event_cycle << endl; //});
+    cout << " head: " << head << " tail: " << tail << " occupancy: " << occupancy << " event_cycle: " << packet->event_cycle << " message_type: "<< dec << packet->message_type << endl; //});
 #endif
 
     assert(packet->address != 0);//Packet can't have 0 address
