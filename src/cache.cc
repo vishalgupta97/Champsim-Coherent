@@ -73,30 +73,32 @@ void CACHE::l1_handle_fill()
 	    sim_access[fill_cpu][MSHR.entry[mshr_index].type]++;
 
 	    // check fill level
-	    if (MSHR.entry[mshr_index].fill_level < fill_level) {
-
-		if (MSHR.entry[mshr_index].instruction)
-		    upper_level_icache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
-		else // data
-		    upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+	    if (MSHR.entry[mshr_index].fill_level < fill_level) 
+		{
+			if (MSHR.entry[mshr_index].instruction)
+		    	upper_level_icache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
+			else // data
+		    	upper_level_dcache[fill_cpu]->return_data(&MSHR.entry[mshr_index]);
 	    }
 
 	    // update processed packets
-        if (cache_type == IS_L1I) {
+        if (cache_type == IS_L1I) 
+		{
             if (PROCESSED.occupancy < PROCESSED.SIZE)
                 PROCESSED.add_queue(&MSHR.entry[mshr_index]);
         }
         //else if (cache_type == IS_L1D) {
-        else if ((cache_type == IS_L1D) && (MSHR.entry[mshr_index].type != PREFETCH)) {
+        else if ((cache_type == IS_L1D) && (MSHR.entry[mshr_index].type != PREFETCH)) 
+		{
             if (PROCESSED.occupancy < PROCESSED.SIZE)
                 PROCESSED.add_queue(&MSHR.entry[mshr_index]);
         }
 
 	    if(warmup_complete[fill_cpu])
-	      {
+	    {
 			uint64_t current_miss_latency = (current_core_cycle[fill_cpu] - MSHR.entry[mshr_index].cycle_enqueued);
 			total_miss_latency += current_miss_latency;
-	      }
+	    }
 
 	    MSHR.remove_queue(&MSHR.entry[mshr_index]);
 	    MSHR.num_returned--;
@@ -222,8 +224,8 @@ void CACHE::l1_handle_writeback()
 
     assert(cache_type == IS_L1D); //Write request can't come to L1I
 
-    // handle the oldest entry
-    if ((WQ.entry[WQ.head].event_cycle <= current_core_cycle[writeback_cpu]) && (WQ.occupancy > 0)) {
+	// handle the oldest entry
+	if ((WQ.entry[WQ.head].event_cycle <= current_core_cycle[writeback_cpu]) && (WQ.occupancy > 0)) {
         int index = WQ.head;
 
         // access cache

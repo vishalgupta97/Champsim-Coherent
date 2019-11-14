@@ -1,3 +1,4 @@
+run_champsim.sh
 tracer/*.out
 tracer/*.gz
 tracer/*.trace
