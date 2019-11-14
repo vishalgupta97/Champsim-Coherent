@@ -29,6 +29,8 @@ bool CACHE::make_inclusive(CACHE &cache,uint64_t address)
 bool CACHE::back_invalidate_l1(uint64_t address)
 {
 	assert(cache_type == IS_L2C);
+    if(address == 0)
+	    return true;
     return make_inclusive(ooo_cpu[cpu].L1I,address) && make_inclusive(ooo_cpu[cpu].L1D,address);
 }
 
@@ -693,6 +695,7 @@ void CACHE::l2_handle_forwards()
             		//L2R(9-11)C8
             		assert(fab_index != -1);
             		FAB.remove_queue(&FAB.entry[fab_index]);
+			FWQ.remove_queue(&FWQ.entry[index]);
             	}
             	else
             	{
@@ -753,15 +756,15 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
 
     //MSHR hit then stall //L2R(2,3,4,6,7)C4
     for (uint32_t index=0; index<MSHR_SIZE; index++) {
-        if (MSHR.entry[index].address == block[set][way].address) {
-           
+        if ( MSHR.entry[index].address != 0 && MSHR.entry[index].address == block[set][way].address) {
+    	   assert(0); //Remove this      
             return -1;
         }
     }
 
     //MSHR hit then stall //L2R(9-11)C4
     for (uint32_t index=0; index<L2C_FAB_SIZE; index++) {
-        if (FAB.entry[index].address == block[set][way].address) {
+        if ( FAB.entry[index].address != 0 && FAB.entry[index].address == block[set][way].address) {
            
             assert(0);
         }
@@ -769,53 +772,55 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
 
     // is this dirty?
     
+    if(block[set][way].address != 0)
+    {
+	    if (lower_level) {
+	        if (lower_level->get_occupancy(4, block[set][way].address) == lower_level->get_size(4, block[set][way].address)) {
 
-    if (lower_level) {
-        if (lower_level->get_occupancy(4, block[set][way].address) == lower_level->get_size(4, block[set][way].address)) {
+	            // lower level WQ is full, cannot replace this victim
+	            do_fill = 0;
+	            lower_level->increment_WQ_FULL(block[set][way].address);
+	            STALL[MSHR.entry[mshr_index].type]++;
+		    assert(0);//Remove this
+	            return -1;
+	        }
+	        else {
 
-            // lower level WQ is full, cannot replace this victim
-            do_fill = 0;
-            lower_level->increment_WQ_FULL(block[set][way].address);
-            STALL[MSHR.entry[mshr_index].type]++;
+	        	if(back_invalidate_l1(block[set][way].address))
+	    		{
+	    			PACKET put_packet;
 
-            return -1;
-        }
-        else {
+		            put_packet.fill_level = fill_level << 1;
+		            put_packet.cpu = fill_cpu;
+		            put_packet.address = block[set][way].address;
+		            put_packet.full_addr = block[set][way].full_addr;
+		            put_packet.data = block[set][way].data;
+		            put_packet.instr_id = MSHR.entry[mshr_index].instr_id;
+		            put_packet.ip = 0; // writeback does not have ip
+		            if(block[set][way].state == M_STATE)
+		            	put_packet.message_type = PUTM_MSG;
+		            else if(block[set][way].state == S_STATE)
+		            	put_packet.message_type = PUTS_MSG;
+		            put_packet.event_cycle = current_core_cycle[fill_cpu];
 
-        	if(back_invalidate_l1(block[set][way].address))
-    		{
-    			PACKET put_packet;
+		            uncore.LLC.REQQ.add_queue(&put_packet);
+		            if(block[set][way].state == M_STATE)
+		            	put_packet.state = MIA_STATE;
+		            else if(block[set][way].state == S_STATE)
+		            	put_packet.state = SIA_STATE;
+		            FAB.add_queue(&put_packet);
+	    		}
+	    		else
+	    		{
+	               		STALL[MSHR.entry[mshr_index].type]++;
+				assert(0);//remove this
+	               		return -1;
+	    		}
 
-	            put_packet.fill_level = fill_level << 1;
-	            put_packet.cpu = fill_cpu;
-	            put_packet.address = block[set][way].address;
-	            put_packet.full_addr = block[set][way].full_addr;
-	            put_packet.data = block[set][way].data;
-	            put_packet.instr_id = MSHR.entry[mshr_index].instr_id;
-	            put_packet.ip = 0; // writeback does not have ip
-	            if(block[set][way].state == M_STATE)
-	            	put_packet.message_type = PUTM_MSG;
-	            else if(block[set][way].state == S_STATE)
-	            	put_packet.message_type = PUTS_MSG;
-	            put_packet.event_cycle = current_core_cycle[fill_cpu];
-
-	            uncore.LLC.REQQ.add_queue(&put_packet);
-	            if(block[set][way].state == M_STATE)
-	            	put_packet.state = MIA_STATE;
-	            else if(block[set][way].state == S_STATE)
-	            	put_packet.state = SIA_STATE;
-	            FAB.add_queue(&put_packet);
-    		}
-    		else
-    		{
-               	STALL[MSHR.entry[mshr_index].type]++;
-               	return -1;
-    		}
-
-            
-        }
-    }
-
+	            
+	        }
+	    }
+	}
 
     if (do_fill){
         // update prefetcher
@@ -927,7 +932,10 @@ void CACHE::l2_handle_response()
         		{
         			int fill_way = l2_handle_fill(mshr_index); //L2R(2,3)C(9,11)
         			if(fill_way == -1)
+				{
         				response_handled = 0;
+					assert(0);//@Vishal: Remove this
+				}
         		}
         	}
         	else
@@ -1115,7 +1123,7 @@ void CACHE::l2_handle_read()
                 		  }
 						  add_mshr(&RQ.entry[index]);
 						  
-						  uncore.LLC.RESQ.add_queue(&RQ.entry[index]);
+						  uncore.LLC.REQQ.add_queue(&RQ.entry[index]);
                 }
                 else {
                     if ((mshr_index == -1) && (MSHR.occupancy == MSHR_SIZE)) { // not enough MSHR resource
@@ -1260,17 +1268,19 @@ void CACHE::llc_handle_request()
         		}
 
         		assert(dir_way != DIR_NUM_WAY);// Directory should be able to track all blocks
-
-        		//Add LLC Hit latency and just send the data 
-	            REQQ.entry[index].message_type = DATA_MSG;
-    			ooo_cpu[REQQ.entry[index].cpu].L2C.RESQ.add_queue(&REQQ.entry[index]);
-
+			
+			
     			directory[set][dir_way].sharers[REQQ.entry[index].cpu] = true;
 
     			if(REQQ.entry[index].message_type == GETS_MSG)
     				directory[set][dir_way].state = S_STATE;
-    			else
+    			else if(REQQ.entry[index].message_type == GETM_MSG)
     				directory[set][dir_way].state = M_STATE;
+			else
+				assert(0);
+
+			REQQ.entry[index].message_type = DATA_MSG;
+                        ooo_cpu[REQQ.entry[index].cpu].L2C.RESQ.add_queue(&REQQ.entry[index]);
 
     			directory[set][dir_way].sharers_cnt++;
 
@@ -1297,7 +1307,7 @@ void CACHE::llc_handle_request()
     			ooo_cpu[REQQ.entry[index].cpu].L2C.RESQ.add_queue(&REQQ.entry[index]);
 
     			for(int i = 0; i < NUM_CPUS; i++)
-    				if(directory[set][dir_way].sharers[i])
+    				if( i!= REQQ.entry[index].cpu && directory[set][dir_way].sharers[i])
     				{
     					REQQ.entry[index].message_type = INV_MSG;
     					ooo_cpu[i].L2C.FWQ.add_queue(&REQQ.entry[index]);
@@ -1322,7 +1332,7 @@ void CACHE::llc_handle_request()
         		}
 
         		//Add LLC Hit latency and just send the data 
-	            REQQ.entry[index].message_type = PUT_ACK_MSG;
+	            	REQQ.entry[index].message_type = PUT_ACK_MSG;
     			ooo_cpu[REQQ.entry[index].cpu].L2C.FWQ.add_queue(&REQQ.entry[index]);
 
     			directory[set][dir_way].sharers[REQQ.entry[index].cpu] = false;
@@ -1361,7 +1371,7 @@ void CACHE::llc_handle_request()
     				if(directory[set][dir_way].sharers[i])
     				{
     					REQQ.entry[index].message_type = FWD_GETM_MSG;
-	            		REQQ.entry[index].requester_cpu = REQQ.entry[index].cpu;
+	            			REQQ.entry[index].requester_cpu = REQQ.entry[index].cpu;
     					ooo_cpu[i].L2C.RESQ.add_queue(&REQQ.entry[index]);
     					directory[set][dir_way].sharers[i] = false;
     				}
@@ -1375,7 +1385,7 @@ void CACHE::llc_handle_request()
         	else if(REQQ.entry[index].message_type == PUTS_MSG || REQQ.entry[index].message_type == PUTM_MSG) //LLCR2C(4-7)
         	{
 
-	            REQQ.entry[index].message_type = PUT_ACK_MSG;
+	            	REQQ.entry[index].message_type = PUT_ACK_MSG;
     			ooo_cpu[REQQ.entry[index].cpu].L2C.FWQ.add_queue(&REQQ.entry[index]);
 
     			directory[set][dir_way].sharers[REQQ.entry[index].cpu] = false;
@@ -1412,7 +1422,7 @@ void CACHE::llc_handle_request()
 
 void CACHE::llc_handle_response()
 {
-	assert(cache_type == IS_LLC);
+    assert(cache_type == IS_LLC);
 
     if (RESQ.entry[RESQ.head].cpu == NUM_CPUS)
         return;
@@ -1420,24 +1430,26 @@ void CACHE::llc_handle_response()
     // handle the oldest entry
     if ((RESQ.entry[RESQ.head].event_cycle <= current_core_cycle[RESQ.entry[RESQ.head].cpu]) && (RESQ.occupancy > 0)) 
     {
-    	int index = REQQ.head;
+    	int index = RESQ.head;
+
+    	assert(RESQ.entry[RESQ.head].message_type == DATA_MSG);
 
         // access cache
-        uint32_t set = get_set(REQQ.entry[index].address);
-        int dir_way = dir_check_hit(&REQQ.entry[index]);
+        uint32_t set = get_set(RESQ.entry[index].address);
+        int dir_way = dir_check_hit(&RESQ.entry[index]);
 
         assert(dir_way != -1); //LLCR1C8
 
         assert(directory[set][dir_way].state == SD_STATE); //LLCR(2,3)C8
 
 
-		directory[set][dir_way].sharers[REQQ.entry[index].cpu] = false;
+		directory[set][dir_way].sharers[RESQ.entry[index].cpu] = false;
 		directory[set][dir_way].sharers_cnt--;
 		directory[set][dir_way].state = S_STATE;
 
 		assert(directory[set][dir_way].sharers_cnt != 0);
 		
-		REQQ.remove_queue(&REQQ.entry[index]);
+		RESQ.remove_queue(&RESQ.entry[index]);
 
     }
 
@@ -2415,11 +2427,13 @@ int CACHE::add_rq(PACKET *packet)
     if (RQ.tail >= RQ.SIZE)
         RQ.tail = 0;
 
-    DP ( if (warmup_complete[RQ.entry[index].cpu]) {
+    //DP ( if (warmup_complete[RQ.entry[index].cpu]) {
+#ifdef PRINT_QUEUE_TRACE
     cout << "[" << NAME << "_RQ] " <<  __func__ << " instr_id: " << RQ.entry[index].instr_id << " address: " << hex << RQ.entry[index].address;
     cout << " full_addr: " << RQ.entry[index].full_addr << dec;
     cout << " type: " << +RQ.entry[index].type << " head: " << RQ.head << " tail: " << RQ.tail << " occupancy: " << RQ.occupancy;
-    cout << " event: " << RQ.entry[index].event_cycle << " current: " << current_core_cycle[RQ.entry[index].cpu] << endl; });
+    cout << " event: " << RQ.entry[index].event_cycle << " current: " << current_core_cycle[RQ.entry[index].cpu] << endl; //});
+#endif
 
     if (packet->address == 0)
         assert(0);
@@ -2468,12 +2482,14 @@ int CACHE::add_wq(PACKET *packet)
     if (WQ.tail >= WQ.SIZE)
         WQ.tail = 0;
 
-    DP (if (warmup_complete[WQ.entry[index].cpu]) {
+    //DP (if (warmup_complete[WQ.entry[index].cpu]) {
+#ifdef PRINT_QUEUE_TRACE
     cout << "[" << NAME << "_WQ] " <<  __func__ << " instr_id: " << WQ.entry[index].instr_id << " address: " << hex << WQ.entry[index].address;
     cout << " full_addr: " << WQ.entry[index].full_addr << dec;
     cout << " head: " << WQ.head << " tail: " << WQ.tail << " occupancy: " << WQ.occupancy;
     cout << " data: " << hex << WQ.entry[index].data << dec;
-    cout << " event: " << WQ.entry[index].event_cycle << " current: " << current_core_cycle[WQ.entry[index].cpu] << endl; });
+    cout << " event: " << WQ.entry[index].event_cycle << " current: " << current_core_cycle[WQ.entry[index].cpu] << endl; //});
+#endif
 
     WQ.TO_CACHE++;
     WQ.ACCESS++;
@@ -2748,10 +2764,12 @@ void CACHE::add_mshr(PACKET *packet)
             MSHR.entry[index].returned = INFLIGHT;
             MSHR.occupancy++;
 
-            DP ( if (warmup_complete[packet->cpu]) {
-            cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet->instr_id;
+            //DP ( if (warmup_complete[packet->cpu]) {
+#ifdef PRINT_QUEUE_TRACE
+	    cout << "[" << NAME << "_MSHR] " << __func__ << " instr_id: " << packet->instr_id;
             cout << " address: " << hex << packet->address << " full_addr: " << packet->full_addr << dec;
-            cout << " index: " << index << " occupancy: " << MSHR.occupancy << endl; });
+            cout << " index: " << index << " occupancy: " << MSHR.occupancy << endl; //});
+#endif
 
             break;
         }

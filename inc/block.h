@@ -12,7 +12,7 @@ class DIR_ENTRY {
     //@Vishal : Coherent State
     uint8_t state; // No need for valid and dirty bit
 
-    bool sharers[NUM_CPUS];
+    bool sharers[NUM_CPUS]={false};
     int sharers_cnt;
 
     uint64_t address,
@@ -34,6 +34,7 @@ class DIR_ENTRY {
         cpu = 0;
         instr_id = 0;
         sharers_cnt = 0;
+
     };
 };
 

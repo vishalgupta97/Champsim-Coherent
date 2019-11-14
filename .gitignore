@@ -1,3 +1,5 @@
 tracer/*.out
 bin/
 obj/
+dpc3_traces/
+results_*
