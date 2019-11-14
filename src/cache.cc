@@ -805,6 +805,7 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
 		            	put_packet.message_type = PUTS_MSG;
 		            put_packet.event_cycle = current_core_cycle[fill_cpu];
 
+                    assert(put_packet.message_type!=5);
 		            uncore.LLC.REQQ.add_queue(&put_packet);
 		            if(block[set][way].state == M_STATE)
 		            	put_packet.state = MIA_STATE;
@@ -1124,7 +1125,7 @@ void CACHE::l2_handle_read()
                 		  			RQ.entry[index].state = IMAD_STATE; //L2R1C2
                 		  }
 						  add_mshr(&RQ.entry[index]);
-						  
+						  assert(RQ.entry[index].message_type!=5);
 						  uncore.LLC.REQQ.add_queue(&RQ.entry[index]);
                 }
                 else {
@@ -1256,10 +1257,10 @@ void CACHE::llc_handle_request()
         int dir_way = dir_check_hit(&REQQ.entry[index]);
 
 
-	if(set ==  324 && (REQQ.entry[index].message_type == PUTS_MSG || REQQ.entry[index].message_type == PUTM_MSG)) //Remove This
+	/*if(set ==  324 && (REQQ.entry[index].message_type == PUTS_MSG || REQQ.entry[index].message_type == PUTM_MSG)) //Remove This
 	{
 	 	cout<<"set: " <<set<<" way: "<<dir_way<<endl;
-	}	
+	}*/	
 
 	if(dir_way != -1)
 	{
