@@ -17,9 +17,7 @@ class DIR_ENTRY {
 
     uint64_t address,
              full_addr,
-             tag,
-             data,
-             cpu,
+	     tag,
              instr_id;
 
     DIR_ENTRY() {
@@ -29,9 +27,7 @@ class DIR_ENTRY {
 
         address = 0;
         full_addr = 0;
-        tag = 0;
-        data = 0;
-        cpu = 0;
+	tag = 0;
         instr_id = 0;
         sharers_cnt = 0;
 
