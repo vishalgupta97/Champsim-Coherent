@@ -1046,7 +1046,7 @@ void CACHE::l2_handle_read()
 
             //Coherence: L2R5C2
 	        //Todo: Add a counter for coherence misses.
-			if(way >= 0 && block[set][way].state == S_STATE) //Coherence Write miss
+		if(way >= 0 && block[set][way].state == S_STATE && RQ.entry[index].type == RFO) //Coherence Write miss
 		    {
 		    	way = -1;
 		    }
@@ -1264,7 +1264,7 @@ void CACHE::llc_handle_request()
 
 	if(dir_way != -1)
 	{
-		assert(directory[set][dir_way].sharers_cnt < 2);//Remove this
+		assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);
 	}
 
         if(dir_way == -1)
@@ -1299,7 +1299,7 @@ void CACHE::llc_handle_request()
 			directory[set][dir_way].full_addr = REQQ.entry[index].full_addr;
 			directory[set][dir_way].tag = REQQ.entry[index].address;
     			directory[set][dir_way].instr_id = REQQ.entry[index].instr_id;
-			directory[set][dir_way].sharers_cnt++;
+			directory[set][dir_way].sharers_cnt=1;
 
 			REQQ.entry[index].message_type = DATA_MSG;
                         ooo_cpu[REQQ.entry[index].cpu].L2C.RESQ.add_queue(&REQQ.entry[index]);
@@ -1313,11 +1313,12 @@ void CACHE::llc_handle_request()
         	if(REQQ.entry[index].message_type == GETS_MSG) //LLCR2C1
         	{
         		//Add LLC Hit latency and just send the data 
-	            REQQ.entry[index].message_type = DATA_MSG;
+	            	REQQ.entry[index].message_type = DATA_MSG;
     			ooo_cpu[REQQ.entry[index].cpu].L2C.RESQ.add_queue(&REQQ.entry[index]);
 
     			directory[set][dir_way].sharers[REQQ.entry[index].cpu] = true;
     			directory[set][dir_way].sharers_cnt++;
+			assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);
     			
     			REQQ.remove_queue(&REQQ.entry[index]);
         	}
@@ -1380,7 +1381,8 @@ void CACHE::llc_handle_request()
 
     			directory[set][dir_way].sharers[REQQ.entry[index].cpu] = true;
     			directory[set][dir_way].sharers_cnt++;
-    			directory[set][dir_way].state = SD_STATE;
+    			assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);
+			directory[set][dir_way].state = SD_STATE;
     			
     			REQQ.remove_queue(&REQQ.entry[index]);
         	}
