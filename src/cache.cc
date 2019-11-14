@@ -1256,7 +1256,7 @@ void CACHE::llc_handle_request()
         int dir_way = dir_check_hit(&REQQ.entry[index]);
 
 
-	if(set ==  324) //Remove This
+	if(set ==  324 && (REQQ.entry[index].message_type == PUTS_MSG || REQQ.entry[index].message_type == PUTM_MSG)) //Remove This
 	{
 	 	cout<<"set: " <<set<<" way: "<<dir_way<<endl;
 	}	
@@ -1293,11 +1293,16 @@ void CACHE::llc_handle_request()
     				directory[set][dir_way].state = M_STATE;
 			else
 				assert(0);
+			
+			directory[set][dir_way].address = REQQ.entry[index].address;
+			directory[set][dir_way].full_addr = REQQ.entry[index].full_addr;
+			directory[set][dir_way].tag = REQQ.entry[index].address;
+    			directory[set][dir_way].instr_id = REQQ.entry[index].instr_id;
+			directory[set][dir_way].sharers_cnt++;
 
 			REQQ.entry[index].message_type = DATA_MSG;
                         ooo_cpu[REQQ.entry[index].cpu].L2C.RESQ.add_queue(&REQQ.entry[index]);
 
-    			directory[set][dir_way].sharers_cnt++;
 
     			REQQ.remove_queue(&REQQ.entry[index]);
         	}
