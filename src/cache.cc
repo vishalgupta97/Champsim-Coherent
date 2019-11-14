@@ -233,9 +233,9 @@ void CACHE::l1_handle_writeback()
         //Coherence: L1R3C2
         //Todo: Add a counter for coherence misses.
 	if(cache_type == IS_L1D && way >= 0 && block[set][way].state == S_STATE) //Coherence Write miss
-    {
-    	way = -1;
-    }
+    	{
+    		way = -1;
+    	}
        
 
         if (way >= 0) { // writeback hit (or RFO hit for L1D)
@@ -841,7 +841,7 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
         {
         	block[set][way].state = S_STATE;
         }
-        else if(MSHR.entry[mshr_index].state == IMA_STATE || MSHR.entry[mshr_index].state == IMA_STATE || MSHR.entry[mshr_index].state == SMA_STATE)
+        else if(MSHR.entry[mshr_index].state == IMAD_STATE || MSHR.entry[mshr_index].state == IMA_STATE || MSHR.entry[mshr_index].state == SMAD_STATE || MSHR.entry[mshr_index].state == SMA_STATE)
         {
         	block[set][way].state = M_STATE;
         }
@@ -958,7 +958,7 @@ void CACHE::l2_handle_response()
         	if(MSHR.entry[mshr_index].acks == 0)
         	{
         		//@Vishal: Check L2R(3,6)C13
-        		int fill_way = l2_handle_fill(mshr_index); //L2R(2,3)C(9,11)
+        		int fill_way = l2_handle_fill(mshr_index); //L2R(4,7)C13
     			if(fill_way == -1)
     				response_handled = 0;
         	}
@@ -1246,10 +1246,23 @@ void CACHE::llc_handle_request()
     if ((REQQ.entry[REQQ.head].event_cycle <= current_core_cycle[REQQ.entry[REQQ.head].cpu]) && (REQQ.occupancy > 0)) 
     {
         int index = REQQ.head;
+	
+	assert(REQQ.entry[index].address != 0);
 
         // access cache
         uint32_t set = get_set(REQQ.entry[index].address);
         int dir_way = dir_check_hit(&REQQ.entry[index]);
+
+
+	if(set ==  324) //Remove This
+	{
+	 	cout<<"set: " <<set<<" way: "<<dir_way<<endl;
+	}	
+
+	if(dir_way != -1)
+	{
+		assert(directory[set][dir_way].sharers_cnt < 2);//Remove this
+	}
 
         if(dir_way == -1)
         {
