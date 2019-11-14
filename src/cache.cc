@@ -623,7 +623,7 @@ void CACHE::l2_handle_forwards()
         		else if(FWQ.entry[index].message_type == FWD_GETM_MSG) //L2R8C6
         		{
         			//L2R8C6
-	        		if(back_invalidate_l1(FWQ.entry[index].address) && WQ.check_queue(FWQ.entry[index].address) == -1)
+	        		if(back_invalidate_l1(FWQ.entry[index].address) && (WQ.check_queue(&FWQ.entry[index]) == -1))
 	        		{
 					
 					block[set][way].state = I_STATE;
@@ -788,9 +788,19 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
 	            return -1;
 	        }
 	        else {
-
+				
 	        	if(back_invalidate_l1(block[set][way].address))
 	    		{
+					if(WQ.check_queue(&MSHR.entry[mshr_index]) == -1 && block[set][way].state == M_STATE)
+					{
+						do_fill = 0;
+    		            lower_level->increment_WQ_FULL(block[set][way].address);
+	        	        STALL[MSHR.entry[mshr_index].type]++;
+           				 //assert(0);//Remove this
+                		return -1;
+
+					}
+
 	    			PACKET put_packet;
 
 		            put_packet.fill_level = fill_level << 1;
