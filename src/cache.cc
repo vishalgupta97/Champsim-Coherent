@@ -623,12 +623,13 @@ void CACHE::l2_handle_forwards()
         		else if(FWQ.entry[index].message_type == FWD_GETM_MSG) //L2R8C6
         		{
         			//L2R8C6
-	        		if(back_invalidate_l1(FWQ.entry[index].address))
+	        		if(back_invalidate_l1(FWQ.entry[index].address) && WQ.check_queue(FWQ.entry[index].address) == -1)
 	        		{
-	        			block[set][way].state = I_STATE;
-	        			FWQ.entry[index].message_type = DATA_MSG;
-	        			ooo_cpu[FWQ.entry[index].requester_cpu].L2C.RESQ.add_queue(&FWQ.entry[index]);
-	        			FWQ.remove_queue(&FWQ.entry[index]);
+					
+					block[set][way].state = I_STATE;
+					FWQ.entry[index].message_type = DATA_MSG;
+					ooo_cpu[FWQ.entry[index].requester_cpu].L2C.RESQ.add_queue(&FWQ.entry[index]);
+					FWQ.remove_queue(&FWQ.entry[index]);
 	        		}
 	        		else
 	        		{
