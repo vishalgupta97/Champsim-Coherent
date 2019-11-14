@@ -1,3 +1,8 @@
 tracer/*.out
+tracer/*.gz
+tracer/*.trace
+results*
+tracer/obj-intel64/*
+tracer/pin.log
 bin/
 obj/

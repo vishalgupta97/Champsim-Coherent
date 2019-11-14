@@ -10,16 +10,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
-#include <map>
+#include <assert.h>
 
-//using namespace std;
 #define NUM_INSTR_DESTINATIONS 2
 #define NUM_INSTR_SOURCES 4
+#define TOTAL_THREADS 5 //1(Main Thread)+4 
 
-map <unsigned long long int, PIN_LOCK> addr_lock;
-map <unsigned long long int, unsigned long long int> addr_counter;
-
-typedef struct trace_instr_format {
+typedef struct trace_instr_format 
+{
     unsigned long long int ip;  // instruction pointer (program counter) value
 
     unsigned char is_branch;    // is this branch
@@ -31,34 +29,34 @@ typedef struct trace_instr_format {
     unsigned long long int destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
     unsigned long long int source_memory[NUM_INSTR_SOURCES];           // input memory
 
-	unsigned long long int time_fill; // counter to update the address
 } trace_instr_format_t;
 
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
 
-UINT64 instrCount = 0;
+UINT64 instrCount[TOTAL_THREADS];
 
-FILE* out;
+FILE* out_thread[TOTAL_THREADS];//One extra for main thread
 
-bool output_file_closed = false;
-bool tracing_on = false;
+
+
+bool output_file_closed[TOTAL_THREADS];
+bool tracing_on[TOTAL_THREADS];
+
 
 trace_instr_format_t curr_instr;
+
+
 
 /* ===================================================================== */
 // Command line switches
 /* ===================================================================== */
-KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE,  "pintool", "o", "champsim.trace", 
-        "specify file name for Champsim tracer output");
-
 KNOB<UINT64> KnobSkipInstructions(KNOB_MODE_WRITEONCE, "pintool", "s", "0", 
         "How many instructions to skip before tracing begins");
 
 KNOB<UINT64> KnobTraceInstructions(KNOB_MODE_WRITEONCE, "pintool", "t", "1000000", 
         "How many instructions to trace");
-
 /* ===================================================================== */
 // Utilities
 /* ===================================================================== */
@@ -82,21 +80,23 @@ INT32 Usage()
 // Analysis routines
 /* ===================================================================== */
 
-void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring)
+void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring, THREADID id)
 {
-    instrCount++;
+	//assert(id<5);
+/*    instrCount[id]++;
     //printf("[%p %u %s ", ip, opcode, (char*)opstring);
 
-    if(instrCount > KnobSkipInstructions.Value()) 
+    if(instrCount[id] > KnobSkipInstructions.Value()) 
     {
-        tracing_on = true;
+        tracing_on[id] = true;
 
-        if(instrCount > (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()))
-            tracing_on = false;
+        if(instrCount[id] > (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()))
+            tracing_on[id] = false;
     }
-
-    if(!tracing_on) 
-        return;
+*/
+    unsigned long long total=KnobTraceInstructions.Value()+KnobSkipInstructions.Value();
+	if(instrCount[1] > total && instrCount[2] > total && instrCount[3] > total && instrCount[4] > total)
+		exit(0);
 
     // reset the current instruction
     curr_instr.ip = (unsigned long long int)ip;
@@ -117,32 +117,32 @@ void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring)
     }
 }
 
-void EndInstruction()
+void EndInstruction(THREADID id)//@Thread id attribute added by Sujeet
 {
     //printf("%d]\n", (int)instrCount);
 
     //printf("\n");
-
-    if(instrCount > KnobSkipInstructions.Value())
+	instrCount[id]++;
+	assert(id < TOTAL_THREADS && id >= 0);
+    if(instrCount[id] > KnobSkipInstructions.Value())
     {
-        tracing_on = true;
-
-        if(instrCount <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()))
+        tracing_on[id] = true;
+        if(instrCount[id] <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()))
         {
             // keep tracing
-            fwrite(&curr_instr, sizeof(trace_instr_format_t), 1, out);
+            fwrite(&curr_instr, sizeof(trace_instr_format_t), 1, out_thread[id]);
         }
         else
         {
-            tracing_on = false;
+            tracing_on[id] = false;
             // close down the file, we're done tracing
-            if(!output_file_closed)
+            if(!output_file_closed[id])
             {
-                fclose(out);
-                output_file_closed = true;
+				
+                fclose(out_thread[id]);
+                output_file_closed[id] = true;
             }
 
-            exit(0);
         }
     }
 }
@@ -320,7 +320,7 @@ VOID Instruction(INS ins, VOID *v)
 {
     // begin each instruction with this function
     UINT32 opcode = INS_Opcode(ins);
-    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)BeginInstruction, IARG_INST_PTR, IARG_UINT32, opcode, IARG_END);
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)BeginInstruction, IARG_INST_PTR, IARG_UINT32, opcode, IARG_THREAD_ID, IARG_END);
 
     // instrument branch instructions
     if(INS_IsBranch(ins))
@@ -371,7 +371,7 @@ VOID Instruction(INS ins, VOID *v)
     }
 
     // finalize each instruction with this function
-    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)EndInstruction, IARG_END);
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)EndInstruction, IARG_THREAD_ID , IARG_END);
 }
 
 /*!
@@ -384,10 +384,12 @@ VOID Instruction(INS ins, VOID *v)
 VOID Fini(INT32 code, VOID *v)
 {
     // close the file if it hasn't already been closed
-    if(!output_file_closed) 
+    if(!output_file_closed[0]) 
     {
-        fclose(out);
-        output_file_closed = true;
+		for(int i=0;i<TOTAL_THREADS;i++){
+        	fclose(out_thread[i]);
+        	output_file_closed[i] = true;
+		}
     }
 }
 
@@ -403,41 +405,40 @@ int main(int argc, char *argv[])
     // Initialize PIN library. Print help message if -h(elp) is specified
     // in the command line or the command line is invalid 
     if( PIN_Init(argc,argv) )
-        return Usage();
-
-    const char* fileName = KnobOutputFile.Value().c_str();
-
-	FILE *unique_addr;
-	
-
-    out = fopen(fileName, "ab");
-    if (!out) 
-    {
-        cout << "Couldn't open output trace file. Exiting." << endl;
-        exit(1);
-    }
-
-	unique_addr = fopen("unique_address.out", "r");
-    if (!unique_addr)
-    {
-        cout << "Couldn't open unique block file. Exiting." << endl;
-        exit(1);
-    }
-
-	//map <unsigned long long, PIN_LOCK> addr_lock; This map is declared globally
-	
-	char * line = NULL;
-    size_t len = 0;
-    ssize_t read;
-	unsigned long long int address;
-	PIN_LOCK pinLock;    
-	PIN_InitLock(&pinLock);
-    while ((read = getline(&line, &len, unique_addr)) != -1) //Reading addresses and storing in map addr_lock and addr_counter
 	{
-		address= strtoull (line,NULL,10);
-		addr_lock.insert({address,pinLock});  //Created map of address and lock
-		addr_counter.insert({address,0});     //Created map of address and counter
-    }
+        return Usage();
+	}
+	for(int i=0;i<TOTAL_THREADS;i++)
+	{
+		output_file_closed[i] = false;
+		tracing_on[i] = false;
+		instrCount[i] = 0;
+	}
+
+	
+	/*const char* fileNameThreads1 = KnobOutputFileThread1.c_str();
+    const char* fileNameThreads2 = KnobOutputFileThread2.c_str();
+    const char* fileNameThreads3 = KnobOutputFileThread3.c_str();
+    const char* fileNameThreads4 = KnobOutputFileThread4.c_str();
+
+    const char* fileName = KnobOutputFileMain.Value().c_str();*/
+
+    //out_main = fopen(fileName, "wb");
+	out_thread[0] = fopen("ThreadMain.trace", "wb");
+	out_thread[1] = fopen("Thread1.trace", "wb");
+	out_thread[2] = fopen("Thread2.trace", "wb");
+	out_thread[3] = fopen("Thread3.trace", "wb");
+    out_thread[4] = fopen("Thread4.trace", "wb");
+
+
+	for(int i=0;i<TOTAL_THREADS;i++)
+		    if (!out_thread[i])
+			{
+				cout << "Couldn't open output trace file. Exiting." << endl;
+				exit(1);
+			}
+
+	
 
     // Register function to be called to instrument instructions
     INS_AddInstrumentFunction(Instruction, 0);

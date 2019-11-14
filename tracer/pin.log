@@ -1,2 +1,2 @@
 Pin 3.2 kit 81201
-E:  Unable to load obj-intel64/.so
+A:  Source/pin/vm_u/vm_signal_impl_unix.cpp: InternalHandlerAsync: 4624: Exceeded pending signal limit in signal emulation code

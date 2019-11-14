@@ -284,7 +284,6 @@ uint64_t va_to_pa(uint32_t cpu, uint64_t instr_id, uint64_t va, uint64_t unique_
     if (va == 0) 
         assert(0);
 #endif
-
     uint8_t  swap = 0;
     uint64_t high_bit_mask = rotr64(cpu, lg2(NUM_CPUS)),
              unique_va = va | high_bit_mask;

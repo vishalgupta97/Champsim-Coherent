@@ -1,5 +1,5 @@
 policy=lru #${1}
-numcpu=1  #${2}
+numcpu=4  #${2}
 combination=no-no-no #${3}
 
 IFS='-' # hyphen (-) is set as delimiter
