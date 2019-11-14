@@ -791,7 +791,7 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
 				
 	        	if(back_invalidate_l1(block[set][way].address))
 	    		{
-					if(WQ.check_queue(&MSHR.entry[mshr_index]) == -1 && block[set][way].state == M_STATE)
+					if(WQ.check_queue(&MSHR.entry[mshr_index]) != -1 && block[set][way].state == M_STATE)
 					{
 						do_fill = 0;
     		            lower_level->increment_WQ_FULL(block[set][way].address);
