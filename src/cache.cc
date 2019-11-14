@@ -759,7 +759,7 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
     //MSHR hit then stall //L2R(2,3,4,6,7)C4
     for (uint32_t index=0; index<MSHR_SIZE; index++) {
         if ( MSHR.entry[index].address != 0 && MSHR.entry[index].address == block[set][way].address) {
-    	   assert(0); //Remove this      
+    	   //assert(0); //Remove this      
             return -1;
         }
     }
@@ -783,7 +783,7 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
 	            do_fill = 0;
 	            lower_level->increment_WQ_FULL(block[set][way].address);
 	            STALL[MSHR.entry[mshr_index].type]++;
-		    assert(0);//Remove this
+		    //assert(0);//Remove this
 	            return -1;
 	        }
 	        else {
@@ -816,7 +816,7 @@ int CACHE::l2_handle_fill(uint32_t mshr_index) //Return way if fill successfull 
 	    		else
 	    		{
 	               		STALL[MSHR.entry[mshr_index].type]++;
-				assert(0);//remove this
+				//assert(0);//remove this
 	               		return -1;
 	    		}
 
@@ -937,7 +937,7 @@ void CACHE::l2_handle_response()
         			if(fill_way == -1)
 				{
         				response_handled = 0;
-					assert(0);//@Vishal: Remove this
+					//assert(0);//@Vishal: Remove this
 				}
         		}
         	}
@@ -1046,7 +1046,7 @@ void CACHE::l2_handle_read()
 
             //Coherence: L2R5C2
 	        //Todo: Add a counter for coherence misses.
-			if(way >= 0 && block[set][way].state == S_STATE) //Coherence Write miss
+		if(way >= 0 && block[set][way].state == S_STATE && RQ.entry[index].type == RFO) //Coherence Write miss
 		    {
 		    	way = -1;
 		    }
@@ -1264,7 +1264,7 @@ void CACHE::llc_handle_request()
 
 	if(dir_way != -1)
 	{
-		assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);//Remove this
+		assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);
 	}
 
         if(dir_way == -1)
@@ -1314,13 +1314,14 @@ void CACHE::llc_handle_request()
         	if(REQQ.entry[index].message_type == GETS_MSG) //LLCR2C1
         	{
         		//Add LLC Hit latency and just send the data 
-	            REQQ.entry[index].message_type = DATA_MSG;
+	            	REQQ.entry[index].message_type = DATA_MSG;
     			ooo_cpu[REQQ.entry[index].cpu].L2C.RESQ.add_queue(&REQQ.entry[index]);
 
     			directory[set][dir_way].sharers[REQQ.entry[index].cpu] = true;
     			directory[set][dir_way].sharers_cnt++;
     			assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);
 
+    			
     			REQQ.remove_queue(&REQQ.entry[index]);
         	}
         	else if(REQQ.entry[index].message_type == GETM_MSG) //LLCR2C2
