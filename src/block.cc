@@ -80,18 +80,24 @@ void PACKET_QUEUE::add_queue(PACKET *packet)
         assert(0);
 #endif
 
+
     // add entry
     entry[tail] = *packet;
 
-    DP ( if (warmup_complete[packet->cpu]) {
+    //DP ( if (warmup_complete[packet->cpu]) {
+
+#ifdef PRINT_QUEUE_TRACE
     cout << "[" << NAME << "] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << packet->instr_id;
     cout << " address: " << hex << entry[tail].address << " full_addr: " << entry[tail].full_addr << dec;
-    cout << " head: " << head << " tail: " << tail << " occupancy: " << occupancy << " event_cycle: " << entry[tail].event_cycle << endl; });
-
+    cout << " head: " << head << " tail: " << tail << " occupancy: " << occupancy << " event_cycle: " << entry[tail].event_cycle << endl; //});
+#endif
     occupancy++;
     tail++;
     if (tail >= SIZE)
         tail = 0;
+
+
+   assert(packet->address != 0);//Packet can't have 0 address
 }
 
 void PACKET_QUEUE::remove_queue(PACKET *packet)
@@ -101,10 +107,16 @@ void PACKET_QUEUE::remove_queue(PACKET *packet)
         assert(0);
 #endif
 
-    DP ( if (warmup_complete[packet->cpu]) {
+
+    //DP ( if (warmup_complete[packet->cpu]) {
+
+#ifdef PRINT_QUEUE_TRACE
     cout << "[" << NAME << "] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << packet->instr_id;
     cout << " address: " << hex << packet->address << " full_addr: " << packet->full_addr << dec << " fill_level: " << packet->fill_level;
-    cout << " head: " << head << " tail: " << tail << " occupancy: " << occupancy << " event_cycle: " << packet->event_cycle << endl; });
+    cout << " head: " << head << " tail: " << tail << " occupancy: " << occupancy << " event_cycle: " << packet->event_cycle << endl; //});
+#endif
+
+    assert(packet->address != 0);//Packet can't have 0 address
 
     // reset entry
     PACKET empty_packet;
@@ -114,4 +126,7 @@ void PACKET_QUEUE::remove_queue(PACKET *packet)
     head++;
     if (head >= SIZE)
         head = 0;
+
+
+
 }
