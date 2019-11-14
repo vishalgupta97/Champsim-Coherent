@@ -1,3 +1,6 @@
+*.swp
+*.bak
+.gitignore
 run_champsim.sh
 tracer/*.out
 tracer/*.gz

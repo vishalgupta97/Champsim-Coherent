@@ -1264,7 +1264,7 @@ void CACHE::llc_handle_request()
 
 	if(dir_way != -1)
 	{
-		assert(directory[set][dir_way].sharers_cnt < 2);//Remove this
+		assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);//Remove this
 	}
 
         if(dir_way == -1)
@@ -1300,6 +1300,7 @@ void CACHE::llc_handle_request()
 			directory[set][dir_way].tag = REQQ.entry[index].address;
     			directory[set][dir_way].instr_id = REQQ.entry[index].instr_id;
 			directory[set][dir_way].sharers_cnt++;
+			assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);
 
 			REQQ.entry[index].message_type = DATA_MSG;
                         ooo_cpu[REQQ.entry[index].cpu].L2C.RESQ.add_queue(&REQQ.entry[index]);
@@ -1318,7 +1319,8 @@ void CACHE::llc_handle_request()
 
     			directory[set][dir_way].sharers[REQQ.entry[index].cpu] = true;
     			directory[set][dir_way].sharers_cnt++;
-    			
+    			assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);
+
     			REQQ.remove_queue(&REQQ.entry[index]);
         	}
         	else if(REQQ.entry[index].message_type == GETM_MSG) //LLCR2C2
@@ -1358,6 +1360,7 @@ void CACHE::llc_handle_request()
 
     			directory[set][dir_way].sharers[REQQ.entry[index].cpu] = false;
     			directory[set][dir_way].sharers_cnt--;
+				assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);
 
     			if(directory[set][dir_way].sharers_cnt == 0)
     				directory[set][dir_way].state = I_STATE;
@@ -1380,6 +1383,8 @@ void CACHE::llc_handle_request()
 
     			directory[set][dir_way].sharers[REQQ.entry[index].cpu] = true;
     			directory[set][dir_way].sharers_cnt++;
+				assert(directory[set][dir_way].sharers_cnt <= NUM_CPUS);
+
     			directory[set][dir_way].state = SD_STATE;
     			
     			REQQ.remove_queue(&REQQ.entry[index]);
