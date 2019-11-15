@@ -225,7 +225,7 @@ void CACHE::l1_handle_writeback()
     assert(cache_type == IS_L1D); //Write request can't come to L1I
 
 	// handle the oldest entry
-	if ((WQ.entry[WQ.head].event_cycle <= current_core_cycle[writeback_cpu]) && (WQ.occupancy > 0)) {
+	if ( (WQ.occupancy > 0) && (WQ.entry[WQ.head].event_cycle <= current_core_cycle[writeback_cpu]) ) {
         int index = WQ.head;
 
         // access cache
@@ -357,7 +357,7 @@ void CACHE::l1_handle_read()
         return;
 
         // handle the oldest entry
-        if ((RQ.entry[RQ.head].event_cycle <= current_core_cycle[read_cpu]) && (RQ.occupancy > 0)) {
+        if ((RQ.occupancy > 0) && (RQ.entry[RQ.head].event_cycle <= current_core_cycle[read_cpu]) ) {
             int index = RQ.head;
 
             // access cache
@@ -567,7 +567,7 @@ void CACHE::l2_handle_forwards()
         return;
 
     // handle the oldest entry
-    if ((FWQ.entry[FWQ.head].event_cycle <= current_core_cycle[FWQ.entry[FWQ.head].cpu]) && (FWQ.occupancy > 0)) 
+    if ( (FWQ.occupancy > 0) && (FWQ.entry[FWQ.head].event_cycle <= current_core_cycle[FWQ.entry[FWQ.head].cpu]) ) 
     {
         int index = FWQ.head;
 
@@ -903,7 +903,7 @@ void CACHE::l2_handle_response()
         return;
 
     // handle the oldest entry
-    if ((RESQ.entry[RESQ.head].event_cycle <= current_core_cycle[RESQ.entry[RESQ.head].cpu]) && (RESQ.occupancy > 0)) 
+    if ( (RESQ.occupancy > 0) && (RESQ.entry[RESQ.head].event_cycle <= current_core_cycle[RESQ.entry[RESQ.head].cpu]) ) 
     {
         int index = RESQ.head;
 
@@ -1020,7 +1020,7 @@ void CACHE::l2_handle_writeback()
         return;
 
     // handle the oldest entry
-    if ((WQ.entry[WQ.head].event_cycle <= current_core_cycle[writeback_cpu]) && (WQ.occupancy > 0)) {
+    if ((WQ.occupancy > 0) && (WQ.entry[WQ.head].event_cycle <= current_core_cycle[writeback_cpu]) ) {
         int index = WQ.head;
 
         // access cache
@@ -1072,7 +1072,7 @@ void CACHE::l2_handle_read()
         return;
 
         // handle the oldest entry
-        if ((RQ.entry[RQ.head].event_cycle <= current_core_cycle[read_cpu]) && (RQ.occupancy > 0)) {
+        if ((RQ.occupancy > 0) && (RQ.entry[RQ.head].event_cycle <= current_core_cycle[read_cpu]) ) {
             int index = RQ.head;
 
             // access cache
@@ -1281,7 +1281,7 @@ void CACHE::llc_handle_request()
         return;
 
     // handle the oldest entry
-    if ((REQQ.entry[REQQ.head].event_cycle <= current_core_cycle[REQQ.entry[REQQ.head].cpu]) && (REQQ.occupancy > 0)) 
+    if ((REQQ.occupancy > 0) && (REQQ.entry[REQQ.head].event_cycle <= current_core_cycle[REQQ.entry[REQQ.head].cpu]) ) 
     {
         int index = REQQ.head;
 	
@@ -1494,7 +1494,7 @@ void CACHE::llc_handle_response()
         return;
 
     // handle the oldest entry
-    if ((RESQ.entry[RESQ.head].event_cycle <= current_core_cycle[RESQ.entry[RESQ.head].cpu]) && (RESQ.occupancy > 0)) 
+    if ((RESQ.occupancy > 0) && (RESQ.entry[RESQ.head].event_cycle <= current_core_cycle[RESQ.entry[RESQ.head].cpu]) ) 
     {
     	int index = RESQ.head;
 
@@ -1503,7 +1503,6 @@ void CACHE::llc_handle_response()
         // access cache
         uint32_t set = get_set(RESQ.entry[index].address);
         int dir_way = dir_check_hit(&RESQ.entry[index]);
-
         assert(dir_way != -1); //LLCR1C8
 
         assert(directory[set][dir_way].state == SD_STATE); //LLCR(2,3)C8

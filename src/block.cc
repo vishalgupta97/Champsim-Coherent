@@ -80,6 +80,7 @@ void PACKET_QUEUE::add_queue(PACKET *packet)
         assert(0);
 #endif
 
+    packet_type_count[packet->message_type]++;
 
     // add entry
     entry[tail] = *packet;
