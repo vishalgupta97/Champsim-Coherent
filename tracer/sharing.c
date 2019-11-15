@@ -2,20 +2,20 @@
 #include <stdio.h>       /* standard I/O routines                 */
 #include <pthread.h>     /* pthread functions and data structures */
 #define ITERATIONS 1000000000
-#define WAIT_CYCLES 1000000 // Wait cycles for producer
+#define WAIT_CYCLES 10000 // Wait cycles for producer
 #define TOTAL_THREADS 4
 unsigned long g=5;
 /* function to be executed by the new thread */
 void*
 producer(void* data)
 {
-    int j=0;			/* counter, for delay        */
-    int me = *((int*)data);     /* thread identifying number */
-	for(;j< (WAIT_CYCLES/4)*me;j++)
-		asm("nop");
+    register int j;			/* counter, for delay        */
+    register int me = *((int*)data);     /* thread identifying number */
     while (1) {
-		g = g+1;
+	for(j=0;j< (WAIT_CYCLES/4)*me;j++)
+		asm("nop");
         //printf("Producer:'%d' - Got '%lu'\n", me, g);
+		g = g+1;
     }
 
     /* terminate the thread */
@@ -28,7 +28,7 @@ consumer(void* data)
 {
     register int i;         /* counter, to print numbers */
     int j=0;            /* counter, for delay        */
-    int me = *((int*)data);     /* thread identifying number */
+    register int me = *((int*)data);     /* thread identifying number */
     while (1) {
         i = g+1;
         //printf("Consumer:'%d' - Got '%lu'\n", me, g);
@@ -45,8 +45,7 @@ int main(int argc, char* argv[])
     int        thr_id,choice;         /* thread ID for the newly created thread */
     pthread_t  p_thread1,p_threads[TOTAL_THREADS];       /* thread's structure                     */
     int        a         = 1;  /* thread identifying number            */
-    int        id[4]         = {1,2,3,4};  /* thread identifying number            */
-	register int i;
+    int        id[4]         = {1,2,3,4},i;  /* thread identifying number            */
 	/*printf("Enter your choice\n");
 	printf("1.Multiple Consumer Single Producer\n");
 	printf("2.Single Consumer Multiple Producers\n");
