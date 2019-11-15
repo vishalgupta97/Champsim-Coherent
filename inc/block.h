@@ -241,6 +241,8 @@ class PACKET_QUEUE {
              ROW_BUFFER_MISS,
              FULL;
 
+    int packet_type_count[11]; //11==Message_type_cnt
+
     PACKET *entry, processed_packet[2*MAX_READ_PER_CYCLE];
 
     // constructor
@@ -269,6 +271,10 @@ class PACKET_QUEUE {
         ROW_BUFFER_HIT = 0;
         ROW_BUFFER_MISS = 0;
         FULL = 0;
+
+	for(int i=0;i<11;i++)
+		packet_type_count[i]=0;
+
 
         entry = new PACKET[SIZE]; 
     };

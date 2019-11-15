@@ -463,6 +463,35 @@ uint64_t va_to_pa(uint32_t cpu, uint64_t instr_id, uint64_t va, uint64_t unique_
     return pa;
 }
 
+void print_coherence_stats()
+{
+	string arr[] = {"GETS","GETM","PUTS","PUTM","DATA","INV_ACK","FWD_GETS","FWD_GETM","INV","PUT_ACK"};
+	for(int j=0; j < NUM_CPUS; j++)
+	{
+		cout<<"CPU: "<<j<< " L2C"<<endl;
+		cout<<"FORWARD QUEUE: "<<endl;
+
+		for(int i=1;i<11;i++)
+			cout<<arr[i-1]<<" message: "<<ooo_cpu[j].L2C.FWQ.packet_type_count[i]<<endl;
+		cout<<"RESPONSE QUEUE: "<<endl;
+
+                for(int i=1;i<11;i++)
+                        cout<<arr[i-1]<<" message: "<<ooo_cpu[j].L2C.RESQ.packet_type_count[i]<<endl;
+	}
+
+	cout<<"Uncore LLC"<<endl;
+
+	cout<<"REQUEST QUEUE: "<<endl;
+
+                for(int i=1;i<11;i++)
+                        cout<<arr[i-1]<<" message: "<<uncore.LLC.REQQ.packet_type_count[i]<<endl;
+                cout<<"RESPONSE QUEUE: "<<endl;
+
+                for(int i=1;i<11;i++)
+                        cout<<arr[i-1]<<" message: "<<uncore.LLC.RESQ.packet_type_count[i]<<endl;
+
+}	
+
 int main(int argc, char** argv)
 {
 	// interrupt signal hanlder
@@ -734,7 +763,6 @@ int main(int argc, char** argv)
                  elapsed_hour = elapsed_minute / 60;
         elapsed_minute -= elapsed_hour*60;
         elapsed_second -= (elapsed_hour*3600 + elapsed_minute*60);
-
         for (int i=0; i<NUM_CPUS; i++) {
             // proceed one cycle
             current_core_cycle[i]++;
@@ -891,6 +919,8 @@ int main(int argc, char** argv)
     }
 
     uncore.LLC.llc_prefetcher_final_stats();
+
+    print_coherence_stats();
 
 #ifndef CRC2_COMPILE
     uncore.LLC.llc_replacement_final_stats();
