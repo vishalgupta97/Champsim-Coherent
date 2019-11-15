@@ -1,9 +1,9 @@
-
 #include <stdio.h>       /* standard I/O routines                 */
 #include <pthread.h>     /* pthread functions and data structures */
 #define ITERATIONS 1000000000
-#define WAIT_CYCLES 10000 // Wait cycles for producer
+#define WAIT_CYCLES 1000 // Wait cycles for producer
 #define TOTAL_THREADS 4
+
 unsigned long g=5;
 /* function to be executed by the new thread */
 void*
@@ -16,6 +16,11 @@ producer(void* data)
 		asm("nop");
         //printf("Producer:'%d' - Got '%lu'\n", me, g);
 		g = g+1;
+		/*asm volatile (
+        	" movq  %%rax , (%0)  \n\t"
+        	:
+        	: "c"(g)
+        	: "rax");*/
     }
 
     /* terminate the thread */
@@ -27,11 +32,17 @@ void*
 consumer(void* data)
 {
     register int i;         /* counter, to print numbers */
-    int j=0;            /* counter, for delay        */
     register int me = *((int*)data);     /* thread identifying number */
     while (1) {
-        i = g+1;
-        //printf("Consumer:'%d' - Got '%lu'\n", me, g);
+        /*i = g+1;
+		i++;
+        printf("Consumer:'%d' - Got '%lu'\n", me, g);*/
+		asm volatile (
+    	" movq (%0), %%rax  \n\t"
+    	:
+    	: "c"(&g)
+    	: "rax");
+		
     }
 
     /* terminate the thread */

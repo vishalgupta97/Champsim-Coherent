@@ -77,7 +77,7 @@ VOID RecordMachineAccess(VOID * addr, UINT32 size, THREADID tid)
 	curr_a = a >> 6;
 	//printf("%ld %d\n",curr_a,size);
 	unique_addr.insert(curr_a);
-    if(instrCount > KnobSkipInstructions.Value())
+    if(instrCount <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()) && (instrCount > KnobSkipInstructions.Value()) )
   	  for (auto it=unique_addr.begin(); it != unique_addr.end(); ++it)
     	    printf("%llu \n",*it);
 
@@ -103,7 +103,7 @@ VOID Instruction(INS ins, VOID *v)
     // On the IA-32 and Intel(R) 64 architectures conditional moves and REP 
     // prefixed instructions appear as predicated instructions in Pin.
 	instrCount++;
-	
+
 	if(instrCount > KnobSkipInstructions.Value())
 	{
 		tracing_on=true;
@@ -169,7 +169,7 @@ PIN_Init(argc, argv);
 	instrCount=0;
 	tracing_on=false;
 	
-	printf("skip:%lu %lu",KnobTraceInstructions.Value(),KnobSkipInstructions.Value());
+	printf("%llu %llu",KnobTraceInstructions.Value(),KnobSkipInstructions.Value());
 
     INS_AddInstrumentFunction(Instruction, 0);
     PIN_AddFiniFunction(Fini, 0);

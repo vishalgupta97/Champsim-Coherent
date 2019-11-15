@@ -11,6 +11,7 @@
 #include <string.h>
 #include <string>
 #include <assert.h>
+#include <set>
 
 #define NUM_INSTR_DESTINATIONS 2
 #define NUM_INSTR_SOURCES 4
@@ -47,7 +48,9 @@ bool tracing_on[TOTAL_THREADS];
 
 trace_instr_format_t curr_instr;
 
-
+set<unsigned long long> unique_addr[TOTAL_THREADS];//@Sujeet
+set<unsigned long long> unique_ip[TOTAL_THREADS];//@Sujeet
+unsigned long long total_reads[TOTAL_THREADS],total_writes[TOTAL_THREADS]; //@Sujeet
 
 /* ===================================================================== */
 // Command line switches
@@ -96,10 +99,30 @@ void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring, THREADID id)
 */
     unsigned long long total=KnobTraceInstructions.Value()+KnobSkipInstructions.Value();
 	if(instrCount[1] > total && instrCount[2] > total && instrCount[3] > total && instrCount[4] > total)
+	{
+		//unsigned long long uni_count=0;
+		/*for (auto it=unique_addr.begin(); it != unique_addr.end(); ++it){
+         //    printf("%llu \n",*it);
+			 uni_count++;
+		}*/
+		for(int i=0;i<TOTAL_THREADS;i++){
+			printf("THREAD %d\n",i);
+			printf("Unique blocks accessed%lu\n",unique_addr[i].size());
+            printf("Unique IPs %lu\n",unique_ip[i].size());
+			printf("Total Reads %llu\n",total_reads[i]);
+            printf("Total Writes %llu\n\n\n",total_writes[i]);
+
+		}
+
+
 		exit(0);
+	}
 
     // reset the current instruction
     curr_instr.ip = (unsigned long long int)ip;
+
+
+
 
     curr_instr.is_branch = 0;
     curr_instr.branch_taken = 0;
@@ -117,8 +140,9 @@ void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring, THREADID id)
     }
 }
 
-void EndInstruction(THREADID id)//@Thread id attribute added by Sujeet
+void EndInstruction(THREADID id,VOID *ip)//@Thread id attribute added by Sujeet
 {
+	//
     //printf("%d]\n", (int)instrCount);
 
     //printf("\n");
@@ -126,6 +150,12 @@ void EndInstruction(THREADID id)//@Thread id attribute added by Sujeet
 	assert(id < TOTAL_THREADS && id >= 0);
     if(instrCount[id] > KnobSkipInstructions.Value())
     {
+	    //@Sujeet added for counting unique IPs accessed
+	    unsigned long long a = (unsigned long long)(ip);
+	    a = a>>6;
+	    unique_ip[id].insert(a);
+	    ////****************END @Sujeet******************//////////
+
         tracing_on[id] = true;
         if(instrCount[id] <= (KnobTraceInstructions.Value()+KnobSkipInstructions.Value()))
         {
@@ -247,10 +277,19 @@ void RegWrite(REG i, UINT32 index)
        */
 }
 
-void MemoryRead(VOID* addr, UINT32 index, UINT32 read_size)
+void MemoryRead(VOID* addr, UINT32 index, UINT32 read_size, THREADID id)
 {
-    if(!tracing_on) return;
-
+	if(!tracing_on[id]) return;
+	assert(id>=0 && id <=4);
+	if(instrCount[id] > KnobSkipInstructions.Value())
+	{
+		 //@Sujeet added for counting unique block accessed
+		unsigned long long a = (unsigned long long)(addr);
+		a = a>>6;
+		unique_addr[id].insert(a);
+		total_reads[id]++;
+		////****************END @Sujeet******************//////////
+	}
     //printf("0x%llx,%u ", (unsigned long long int)addr, read_size);
 
     // check to see if this memory read location is already in the list
@@ -276,9 +315,21 @@ void MemoryRead(VOID* addr, UINT32 index, UINT32 read_size)
     }
 }
 
-void MemoryWrite(VOID* addr, UINT32 index)
+void MemoryWrite(VOID* addr, UINT32 index, THREADID id)
 {
-    if(!tracing_on) return;
+	if(!tracing_on[id]) return;
+
+	assert(id>=0 && id <=4);
+    if(instrCount[id] > KnobSkipInstructions.Value())
+    {
+         //@Sujeet added for counting unique block accessed
+        unsigned long long a = (unsigned long long)(addr);
+        a = a>>6;
+        unique_addr[id].insert(a);
+		total_writes[id]++;
+        ////****************END @Sujeet******************//////////
+    }
+
 
     //printf("(0x%llx) ", (unsigned long long int) addr);
 
@@ -309,6 +360,7 @@ void MemoryWrite(VOID* addr, UINT32 index)
        curr_instr.destination_memory = (long long int)addr;
        }
        */
+
 }
 
 /* ===================================================================== */
@@ -359,19 +411,19 @@ VOID Instruction(INS ins, VOID *v)
             UINT32 read_size = INS_MemoryReadSize(ins);
 
             INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)MemoryRead,
-                    IARG_MEMORYOP_EA, memOp, IARG_UINT32, memOp, IARG_UINT32, read_size,
+                    IARG_MEMORYOP_EA, memOp, IARG_UINT32, memOp, IARG_UINT32, read_size, IARG_THREAD_ID ,
                     IARG_END);
         }
         if (INS_MemoryOperandIsWritten(ins, memOp)) 
         {
             INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)MemoryWrite,
-                    IARG_MEMORYOP_EA, memOp, IARG_UINT32, memOp,
+                    IARG_MEMORYOP_EA, memOp, IARG_UINT32, memOp, IARG_THREAD_ID ,
                     IARG_END);
         }
     }
 
     // finalize each instruction with this function
-    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)EndInstruction, IARG_THREAD_ID , IARG_END);
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)EndInstruction, IARG_THREAD_ID , IARG_INST_PTR, IARG_END);
 }
 
 /*!
@@ -391,6 +443,10 @@ VOID Fini(INT32 code, VOID *v)
         	output_file_closed[i] = true;
 		}
     }
+	//for (auto it=unique_addr.begin(); it != unique_addr.end(); ++it)
+	//	     printf("%llu \n",*it);
+
+
 }
 
 /*!
@@ -413,9 +469,9 @@ int main(int argc, char *argv[])
 		output_file_closed[i] = false;
 		tracing_on[i] = false;
 		instrCount[i] = 0;
+		total_reads[i] = 0;
+		total_writes[i] = 0;
 	}
-
-	
 	/*const char* fileNameThreads1 = KnobOutputFileThread1.c_str();
     const char* fileNameThreads2 = KnobOutputFileThread2.c_str();
     const char* fileNameThreads3 = KnobOutputFileThread3.c_str();
